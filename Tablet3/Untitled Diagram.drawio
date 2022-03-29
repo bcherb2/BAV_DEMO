@@ -1,0 +1,84 @@
+<mxfile host="app.diagrams.net" modified="2021-07-19T20:47:18.283Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" etag="msXRoW1O2ssx3L1IIzk5" version="14.8.0" type="github">
+  <diagram id="ejC8uxxE2JN1HVHFfsWF" name="Page-1">
+    <mxGraphModel dx="716" dy="367" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="29dHcHIJ515DjV3QBPIe-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.875;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=1;startArrow=classic;startFill=1;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-1" target="29dHcHIJ515DjV3QBPIe-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.88;exitY=0.25;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=1;entryDx=0;entryDy=0;curved=1;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-1" target="29dHcHIJ515DjV3QBPIe-14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.31;exitY=0.8;exitDx=0;exitDy=0;exitPerimeter=0;startArrow=classic;startFill=1;endArrow=classic;endFill=1;curved=1;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-1" target="29dHcHIJ515DjV3QBPIe-10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="500" y="510" />
+              <mxPoint x="500" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-24" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.8;exitY=0.8;exitDx=0;exitDy=0;exitPerimeter=0;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-1" target="29dHcHIJ515DjV3QBPIe-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-1" value="Liaison" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="470" y="400" width="110" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-20" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4;entryY=0.1;entryDx=0;entryDy=0;entryPerimeter=0;startArrow=none;startFill=0;endArrow=classic;endFill=1;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-2" target="29dHcHIJ515DjV3QBPIe-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-2" value="MiR Fleet &lt;br&gt;(server)" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="430" y="280" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;startArrow=classic;startFill=1;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-4" target="29dHcHIJ515DjV3QBPIe-13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-4" value="Omron PLC" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="390" width="100" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-25" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-5" target="29dHcHIJ515DjV3QBPIe-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-5" value="ANT Server" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="510" width="110" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-9" value="" style="endArrow=classic;startArrow=classic;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-2" target="29dHcHIJ515DjV3QBPIe-14">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="550" y="460" as="sourcePoint" />
+            <mxPoint x="630" y="255" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-23" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-10" target="29dHcHIJ515DjV3QBPIe-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-10" value="900MHz" style="triangle;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="445" y="480" width="70" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-11" value="5 Vehicles" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="570" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-13" value="5 Vehicles" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="750" y="320" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-14" value="&lt;span&gt;MiR Vehicles (5)&lt;/span&gt;" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="580" y="277.5" width="90" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-21" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.07;entryY=0.4;entryDx=0;entryDy=0;entryPerimeter=0;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-15" target="29dHcHIJ515DjV3QBPIe-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-27" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" edge="1" parent="1" source="29dHcHIJ515DjV3QBPIe-15" target="29dHcHIJ515DjV3QBPIe-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-15" value="&lt;span&gt;ADAM Modules&lt;/span&gt;&lt;br&gt;&lt;span&gt;(x13)&lt;/span&gt;" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="331" y="396.5" width="99" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-16" value="&lt;span&gt;Magnetic (x11)&lt;/span&gt;" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="560" width="110" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="29dHcHIJ515DjV3QBPIe-26" value="Doors (x15)" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="195" y="398" width="95" height="53" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

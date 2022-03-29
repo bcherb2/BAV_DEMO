@@ -1,0 +1,32 @@
+{
+  "name": "denso-webpage",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.html",
+  "private": true,
+  "scripts": {
+    "babel": "babel --presets es2015 src/MissionsLite.js -o dist/main.bundle.js",
+    "start": "http-server",
+    "webpack": "webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bcherb2/Denso-Webpage.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bcherb2/Denso-Webpage/issues"
+  },
+  "homepage": "https://github.com/bcherb2/Denso-Webpage#readme",
+  "devDependencies": {
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-plugin-import": "^2.22.1",
+    "webpack": "^5.25.0",
+    "webpack-cli": "^4.5.0"
+  },
+  "dependencies": {
+    "@babel/core": "^7.13.10",
+    "babel-loader": "^8.2.2"
+  }
+}

@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>AGV Monitor</title>
+	
+	<style type="text/css">
+	  <body {background-color: #F1FFFF;}
+	</style>
+
+      
+    <!-- <script type="text/javascript" src="agv.js"></script> -->
+
+    <!--[if IE]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+      
+      
+      
+  </head>
+  <body onload="Refresh()"> 
+     <canvas id="canvas" style="border:0px solid #000000;">Your browser does not support the canvas element!</canvas>
+      
+    <img src="map2.jpg" style="width:0px;height:0px;">
+    <img src="batt.jpg" style="width:0px;height:0px;">
+    
+    <div id="id00"></div>
+	<div id="id01"></div>
+	<div id="id02"></div>
+	<div id="id03"></div>
+	<div id="id04"></div>
+	<div id="id05"></div>
+    <div id="id06"></div>
+  </body>
+<script>
+      
+    class ANTServerRestClient {
+    /*
+     |  Generic REST Client to centralize handling of ANT Server API
+     |  interactions.
+    */
+    constructor(host='localhost', port=8081) {
+        this._host = host;
+        this._port = port;
+
+        this._hostURI = `http://${this._host}:${this._port}/`;
+        this._requestor = 'admin';
+        this._sessionToken = '';
+        this._tokenPath = '?&sessiontoken=';
+
+        // ANT Server Endpoints
+        this._monitor       = this._hostURI + 'wms/monitor/';
+        this._restPath      = this._hostURI + 'wms/rest/';
+        this._login         = this._monitor + 'session/login?username=admin&pwd=123456';
+        this._devices       = this._restPath + 'devices';
+        this._vehicles      = this._restPath + 'vehicles';
+        this._map           = this._restPath + 'maps';
+        this._alarms        = this._restPath + 'alarms';
+        this._openAlarms    = this._restPath + 'openalarms';
+    }
+
+    get token() {
+        return this._sessionToken;
+    }
+
+      /*---------------------------------------*/
+     /* ----- GENERIC UTILITY FUNCTIONS ----- */
+    /*---------------------------------------*/
+    xstr(tag) {
+        return tag ? tag.toString() : ''; 
+    }
+
+    checkTag(tagId, extra=null) {
+        return tagId ? "/"+tagId+this.xstr(extra) : null;
+    }
+
+    setToken(obj, response) {
+        obj._sessionToken = response.payload.sessiontoken;
+    }
+
+    restrequest(url, callback, method="GET") {
+        var xhttp = new XMLHttpRequest();
+        var self = this;
+        xhttp.overrideMimeType("application/json");
+        xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                var response = JSON.parse(this.responseText);
+                callback(self, response);
+            }
+        };
+        xhttp.open(method, url, false);
+        xhttp.send();
+    }
+
+    buildURI(path, tag=null) {
+        return path + this.xstr(tag) + this._tokenPath + this._sessionToken
+    }
+
+    buildRequest(path, callback, method="GET", tag=null, data=null) {
+        this.restrequest(this.buildURI(path, tag), callback, method, data)
+    }
+
+      /*---------------------------------------*/
+     /* --------- ENDPOINT FUNCTIONS -------- */
+    /*---------------------------------------*/
+    GetToken() {
+        /*
+         |  Get a Session token from the server
+        */
+        this.restrequest(this._login, this.setToken);
+    }
+
+    GetVehicles(callback, vehicle=null) {
+        /*
+         |  Get data for one or all vehicles loaded in the server.
+         |  Callback function is mandatory, vehicle id defaults to
+         |  null and returns all vehicles. If a vehicle id is
+         |  specified, that vehicle is returned.
+        */
+
+        var tag = this.checkTag(vehicle, '/info');
+        this.buildRequest(this._vehicles, callback, "GET", tag=tag);
+    }
+
+    GetMaps(callback, levelid=1) {
+        /*
+         |  Get map data for the current project. Level id defaults
+         |  to 1 to match ANT Lab default.
+        */
+
+        var tag = '/level/'+levelid.toString()+'/data';
+        this.buildRequest(this._map, callback, "GET", tag=tag);
+    }
+
+    GetDevices(callback, device=null) {
+        /*
+         |  Get device data for all devices in the project.
+         |  Specifying a device id returns data for that device.
+        */
+
+        var tag = this.checkTag(device);
+        this.buildRequest(this._devices, callback, "GET", tag=tag);
+    }
+
+    GetAlarms(callback) {
+        this.buildRequest(this._alarms, callback);
+    }
+}
+
+var debug = false;
+var sysIP = "localhost";
+//var sysIP = "10.203.64.112"; //Paint Reborn
+
+var GREEN = "#00AA00";
+var BLACK = "#000000";
+var WHITE = "#FFFFFF";
+var RED = "#EE0000";
+var YELLOW = "#FFFF00";
+var background_Color = "white";
+var path_Color = "#0077DD";
+var nav_Color = "red"; //"#999999"; 
+var frmClr = "#DDDDDD";
+
+//factors based off 1000x600 ref pic
+var scale = 6.6; //7.5;
+var xOffset = 60; //40
+var yOffset = 88//68;  
+var agvSize = 20;
+var brd = 2; //border
+var brdClr = "#000000";
+var navON = false;
+
+var ctx;
+var map = new Image();
+var btIcon = new Image();
+var mW;
+var mH;
+var aR;
+var aW;
+var aH;
+var cW;
+var cH;
+var sX;
+var sY;
+var aSx;
+var aSy;
+var token;
+var agv;
+var log = [];
+var eDur = [];
+var aDur = [];
+var ePrev = [];
+var eTime = 60;
+var test;
+var tog = 0;
+var testErr;
+
+// EH
+var deviceCoords = [];  // 2D Array of x, y, z coords of devices
+var deviceTol = 0.21;    // Tolerance used to check if we are within deviceTol meters near a device
+var mapData;            // Variable to store node names and coordinates, used to associate a device to its node coords
+var errsOnStop = ["safetyisnotok", "drivesaredisabled", "SteeringNotReady", "TractionNotReady", "Drive:STOactive"]
+
+const client = new ANTServerRestClient("localhost", 8092);
+
+// Call these to run once since the device and mapdata won't change
+function testAPI(obj, response) {
+    console.log(response);
+}
+
+Refresh();
+client.GetMaps(DrawMap);
+client.GetDevices(ProcessDeviceData);
+
+//var timer = setInterval(Timer, 1000);
+
+//Initialize
+map.src = "imgs/map2.jpg";
+btIcon.src = "imgs/batt.jpg";
+
+mW = 1920;
+mH = 1060; //900; 
+aR = mH / mW;
+
+function Timer() {
+    Refresh();
+    //this is ng because it resets java variables
+    //setInterval(function(){ window.location.reload(false);}, 5000);
+}
+
+function Reset() {
+    document.getElementById("errMsg").innerHTML = "";
+    window.location.reload(false);
+    Refresh();
+    localStorage.clear(); //clear local storage
+}
+
+function Refresh() {
+    var start = Date.now();
+    ctx = document.getElementById("canvas").getContext("2d");
+    cH = window.innerHeight * 0.98;
+    cW = window.innerHeight * (1 / aR); //-30;
+
+    sX = cW / mW;
+    sY = cH / mH;
+
+    ctx.canvas.width = cW;
+    ctx.canvas.height = cH;
+    ctx.imageSmoothingEnabled = true;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    //ctx.globalCompositeOperation = 'destination-over'
+    ctx.fillStyle = background_Color;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    //var mapOffsetX = 56*(canvas.width/809);
+    //var mapOffsetY =  142*(canvas.width/809);
+    //ctx.drawImage(map,mapOffsetX,-mapOffsetY,canvas.width*0.885,canvas.height*1.65); 
+
+    //var mapOffsetX = 80*(canvas.width/809);
+    //var mapOffsetY = 65*(canvas.height/809);
+
+    var mapOffsetX = 80 * (canvas.width / 809);
+    var mapOffsetY = -40 * (canvas.height / 809);
+
+    var msW = cW / 2350;
+    var msH = cW / 2200;
+    ctx.drawImage(map, mapOffsetX, -mapOffsetY, map.width * msW, map.height * msH);
+
+    //document.getElementById("errMsg").innerHTML = "w=" + canvas.width + " h=" + canvas.width;
+
+    //sharpen(ctx,canvas.width, canvas.height, 1.1);  
+
+    tog = 1 - tog;
+    //if (tog==1)
+    //{
+    //Invert(); 
+    //Darken(100); //125);
+
+    //}
+
+    aW = cW / 30
+    aH = cH / 22;
+    agvSize = cW / 35;
+
+    token = "";
+    client.GetToken();
+    //GetToken();
+    //GetDeviceData();
+
+    //if (token!="") GetMapData();
+    DrawBaseGfx();
+    if (client.token != "") client.GetVehicles(GetAGVdata);
+    DrawFaults();
+    //GetLiaisonData("lia.txt");
+    HandleFaults();
+    if (client.token != "") DrawAGVs();
+
+    //if (debug) document.getElementById("errMsg").innerHTML = test;
+    //console.log(Math.abs(Date.now() - start))
+}
+
+function SimFault() {
+    testErr = document.getElementByName("fault1").checked;
+    if (debug) document.getElementById("errMsg").innerHTML = testErr;
+
+}
+
+function HandleFaults() {
+    //localStorage.clear(); //clear local storage
+    //var last = JSON.parse(localStorage.getItem("log"));
+    //if (last!=null) log = last;
+
+    //e = new Event(new Date(), "err txt", 0);
+    //log.push(e);
+    test = "-";
+
+    log.forEach(updateDur);
+
+    //localStorage.setItem("log", JSON.stringify(log)); 
+    //if (debug) document.getElementById("id00").innerHTML = log.length + " " + test;
+}
+
+// EH
+function DiscardError(arr, err) {
+    /*
+     *      First check that the error is present in the provided array.
+     *      Next loop over the array trying to locate the error.
+     *      If the error is found, remove the error from the array.
+     *      We don't add to the iterator if an error is found since the next element will
+     *      then shift position to the current iterator.
+     */
+
+    var ii = 0;
+    if (arr.includes(err)) {
+        while (ii < arr.length) {
+            if (arr[ii] === err) {
+                arr.splice(ii, 1);
+            }
+            else {
+                ++ii;
+            }
+        }
+    }
+    return arr
+}
+
+// EH
+function GetDistance(a, b) {
+    return Math.sqrt(Math.pow((a[0] - b[0]), 2) + Math.pow((a[1] - b[1]), 2))
+}
+
+// EH
+function IsNearDevice(agv) {
+    /*
+     *      Iterate over devices to determine if the current agv is within
+     *      the give deviceTol (in meters) of a device. Also verify that the
+     *      device is in the vehicle trajectory so that we don't inadvertently
+     *      ignore a real error.
+     */
+    //if (agv.hasOwnProperty("path")) {
+    try {
+        var deviceDistances = [];
+        for (var ii = 0; ii < deviceCoords.length; ii++) {
+            if (deviceCoords[ii].enabled && deviceCoords[ii].connected && deviceCoords[ii].devtype == "i/o"){// && agv.path.includes(deviceCoords[ii].parentnode)) {
+                deviceDistances.push(GetDistance(agv.location.coord, deviceCoords[ii].coord));
+            }
+        }
+        return deviceDistances.some((distance) => distance < deviceTol)
+    } catch (err) {
+        return false
+    }
+}
+
+function GetErrors(agv, a) {
+    var neardev = IsNearDevice(agv);
+    var inmanual;
+    try {
+        var e = 0;
+        //var show = true;
+        var err = Array.from(agv.state.errors);
+        //if (agv.operatingstate > 0) {
+        //    console.log({
+        //        name: agv.name,
+        //        errors: err
+        //    });
+        //}
+
+        eDur[a] = eTime;
+
+
+        for (var i = 0; i < err.length; i++) {
+            err[i] = err[i].replace("vehicle.", "");
+            err[i] = err[i].replace("warning.", "");
+            err[i] = err[i].replace("error.", "");
+            err[i] = err[i].replace("messenger.", "");
+            err[i] = err[i].replace("Safety:", "");
+        }
+
+        err = DiscardError(DiscardError(err, "dockingfield"), "safetyfield");       // EH - Remove these messages entirely since they were getting ignored anyway
+        if (err.includes("drivesaredisabled") && err.length > 1) {
+            for (var ii=0; ii<errsOnStop.length; ii++){
+                err = DiscardError(err, errsOnStop[ii]);
+            }
+            //console.log(err)
+            e = 0;
+        }
+
+        // Check if the vehicle is in a manual state
+        inmanual = err.includes("amanualbuttonispressed") || err.includes("themanualswitchispressed") || err.includes("safetyisbypassed");
+
+        if (inmanual && err.includes("tractionwheelsareup")) {
+            err[e] = "tractionwheelsareup";
+        }
+        else if (inmanual) {
+            err[e] = "amanualbuttonispressed";
+        }
+        else if (err.includes("Lost")) {
+            err[e] = "Lost";
+        }
+
+	if (typeof err[e] == "undefined") {
+		err[e]="";
+	}	
+
+        if (err[e].includes("safetyfield") || err[0].includes("dockingfield") || agv.operatingstate == 0) {
+            err[e] = "";
+            //show = false;
+        }
+        else {
+            switch (err[e]) {
+                case "Lost": err[e] = "Vehicle Lost-Recover"; eDur[a] = 1; break;
+                case "encoderspeedcrosscheckfailure": err[e] = "Vehicle Slip-Recover"; eDur[a] = 1; break;
+                case "theemergencybuttonispressed": err[e] = "E-Stop Pressed"; eDur[a] = 1; break;
+                case "anemergencybuttonispressed": err[e] = "E-Stop Pressed"; eDur[a] = 1; break;  // EH
+                case "themanualswitchispressed": err[e] = "MANUAL"; break;
+                case "safetyisbypassed": err[e] = "MANUAL"; break;
+                case "amanualbuttonispressed": err[e] = "MANUAL"; break;  // EH
+                case "CommunicationLost": err[e] = "Vehicle Disconnected"; break;
+                case "TractionNotReady": err[e] = "Traction Not Ready"; break;
+                case "SteeringNotReady": err[e] = neardev ? "" : "Steering Not Ready"; break;  // EH - Could store the function call result to a variable, but this way
+                case "drivesaredisabled": err[e] = neardev ? "" : "Drives Are Disabled"; break;  // EH - limits time spent looping to prevent latency with very large maps 
+                case "Drive:STOactive": err[e] = "Drive STO Active"; break;
+                case "frontscannerhastriggered": err[e] = "Front Scanner Triggered"; break;
+                case "rearscannerhastriggered": err[e] = "Rear Scanner Triggered"; break;
+                case "StoppedObstacle": err[e] = "Object in Hull"; break;
+                case "tractionwheelsareup": err[e] = "Wheels Are Up"; break;
+                case "powerisnotappliedtothedrives": err[e] = "No Drive Power"; break;
+                case "nopayloaddetectedwhilepinisup": err[e] = "Pin is up w/o Payload"; break;  // EH
+                case "Parkingbrakeisnotreleased": err[e] = "Parking Break not Released"; break;  // EH
+                case "payloadcheckfailed(checkpayloadplug&sensor)": err[e] = "Pin is up w/o Payload"; break;  // EH
+
+                default: err[e] = err[e]; break
+            }
+        }
+        return err[e];
+    }
+    catch (err)
+    {
+	console.error(err);
+        return "";
+    }
+}
+
+function Add2Log(n, m) {
+    var add = true;
+    for (var i = 0; i < log.length; i++) {
+        if (log[i].active > 0) {
+            if (log[i].agv == n && log[i].msg == m) add = false;
+        }
+    }
+
+    if (add) {
+        var e = new Event(n, new Date(), m);
+        log.unshift(e); //log.push(e);   
+    }
+}
+
+function ClearErr(n, t) {
+    for (var i = 0; i < log.length; i++) {
+        if (log[i].agv == n && log[i].msg != t) {
+            log[i].active = 0;
+        }
+    }
+}
+
+function Event(agv, d, msg) {
+    this.agv = agv;
+    this.date = d;
+    this.time = d.getTime();
+    this.msg = msg;
+    this.dur = 0;
+    this.active = 1;
+    this.txt = " - - - ";
+    this.txt2 = " - - - - - ";
+    var m = d.getMinutes();
+    if (m < 10) m = "0" + m;
+    this.dt = (d.getMonth() + 1) + "/" + d.getDate() + " " + d.getHours() + ":" + m;
+}
+
+function updateDur(item) {
+    var d = new Date();
+    var diff = Math.round((d.getTime() - item.time) / 1000);
+
+    if (item.active > 0) item.dur = diff;
+    item.txt = item.dt + " - " + item.agv.replace("M_", "#") + " " + item.msg + " [" + item.dur + "s]";
+    item.txt2 = item.dur + "s - Vehicle " + item.agv.replace("M_", "#") + " " + item.msg;
+    test += "[" + item.active + "=" + item.txt + "]";
+}
+
+function GetErrorColor(t) {
+    if (t.includes("Scanner") || t.includes("Object")) t = "PROXIMITY ALERT";
+
+    switch (t) {
+        case "PROXIMITY ALERT": return YELLOW; break;
+        case "MANUAL": return YELLOW; break;
+        default: return RED;
+    }
+}
+
+function DrawBaseGfx() {
+    var fntH = cH / 25;
+
+    //header
+    DrawRectCpt(ctx, cW / 2, 0, cW / 3, cH / 10, brd, "#0077FF", brdClr);
+    DrawTextCpt(ctx, cW / 2, cH / 35, "AGV STATUS MONITOR", "bold " + fntH + "px Arial", BLACK);
+
+    var w = aW * 8.5;
+    var h = aH;
+    var x = aW / 10;
+    var y = cH - (h * 11.1);
+    fntH = h / 2;
+
+    DrawRect(ctx, x, y, w, h * 11, brd, frmClr, brdClr);
+    DrawTextCpt(ctx, x + (w / 2), y + fntH * 0.8, "AGV Status", "bold " + fntH + "px Arial", YELLOW);
+
+    x = x + w + 10;
+    y = cH - (h * 4.2);
+    w = cW / 30 * 20;
+
+    DrawRect(ctx, x, y, w, h * 4, brd, frmClr, brdClr);
+    DrawTextCpt(ctx, x + (w / 2), y + fntH / 2 * 1.5, "Alarm/Fault Log", "bold " + fntH + "px Arial", YELLOW);
+
+    DrawFaults(x + (w / 80), y + fntH * 1.4);
+}
+
+function DrawFaults(x, y) {
+    var w = cW / 4.7;
+    var h = cH / 27;
+    var nY = y;
+    var nX = x;
+    var c = 0;
+    var fntH = h / 2;
+    var clr;
+    var tClr;
+
+    var n = log.length;
+    if (n > 12) {
+        log.pop(); //log.shift();
+    }
+
+    for (var i = 0; i < n; i++) {
+        c++;
+        //if (log[i].dur >=5)
+        //{
+        clr = RED; //GetErrorColor(log[i].msg);
+        if (clr == RED) tClr = BLACK; else tClr = WHITE;
+        DrawRect(ctx, nX, nY, w, h, brd, clr, brdClr);
+        DrawTextCpt(ctx, nX + w / 2, nY + h / 2, log[i].txt, "bold " + fntH * 0.9 + "px Arial", tClr);
+
+        if (log[i].active > 0) {
+
+            if (tog == 0) clr = RED; else clr = "#990000";
+            DrawRectCpt(ctx, cW / 2, 0, cW / 1.4, cH / 10, brd, clr, brdClr);
+            DrawTextCpt(ctx, cW / 2, cH / 35, log[i].txt2, "bold " + fntH * 2.5 + "px Arial", tClr);
+        }
+        //else
+        //{
+        //   delete log[i];  
+        //   return;
+        //}
+        //}
+
+        if (c == 4) {
+            nY = y;
+            nX += w + 5;
+            c = 0;
+        }
+        else {
+            nY += h;
+        }
+    }
+}
+
+function DrawAGVs() {
+    var x;
+    var y;
+    var w = agvSize;
+    var h = agvSize;
+    var fntH = cH / 30;
+    var aX;
+    var aY = cH - (aH * 9.5);
+    var clr;
+    var txt;
+    var batt;
+    var batt_clr;
+    var a;
+
+    if (ePrev.length != agv.length) {
+        ePrev.length = agv.length + 1;
+        eDur.length = agv.length + 1;
+        aDur.length = agv.length + 1;
+    }
+
+    for (var i = 0; i < agv.length; i++) {
+
+
+        a = agv[i].name.replace("M_", "");
+
+        if (agv[i].operatingstate > 0) {
+            x = (agv[i].location.coord[0] + xOffset) * scale * sX;
+            y = (yOffset - agv[i].location.coord[1]) * scale * sY;
+        }
+        else {
+            x = -100;
+            y = -100;
+        }
+
+        txt = GetStatusText(agv[i].action.name);
+        clr = GetStatusColor(txt);
+
+        if (agv[i].state["battery.info"][0] == undefined) txt = "OFFLINE";
+
+        if (txt != "OFFLINE") {
+            txt = GetErrors(agv[i], a);
+            //if (a==3) txt = "Front Scanner Triggered";
+
+            if (txt != ePrev[a]) {
+                aDur[a] = 0;
+                ePrev[a] = txt;
+            }
+            else {
+                if (txt == "") {
+                    aDur[a] = 0;
+                }
+                else {
+                    aDur[a]++;
+                    if (aDur[a] == eDur[a]) Add2Log(agv[i].name, txt);
+                }
+            }
+
+            if (txt == "") //undefined)
+            {
+                txt = GetStatusText(agv[i].action.name);
+                clr = GetStatusColor(txt);
+            }
+            else {
+                clr = GetErrorColor(txt);
+            }
+        }
+
+        aW = cW / 30;
+        aX = aW / 3; //aR*20; //20*cH/cW;  
+
+        if (i == 0) //draw header row
+        {
+            var hY = cH - (aH * 10.3);
+            DrawRect(ctx, aX, hY, aW, aH * 0.8, brd, "white", brdClr);
+            DrawTextCpt(ctx, aX + aW / 2, hY + aH / 2.3, "AGV#", "bold " + fntH * 0.6 + "px Arial", YELLOW);
+        }
+
+        //agv
+        DrawRectCpt(ctx, x, y, w, h, brd, clr, brdClr);
+        DrawTextCpt(ctx, x, y, agv[i].name.replace("M_", ""), "bold " + agvSize * 0.9 + "px Arial", clr);
+
+        //status   
+        DrawRect(ctx, aX, aY, aW, aH, brd, clr, brdClr);
+        DrawTextCpt(ctx, aX + aW / 2, aY + aH / 2, agv[i].name.replace("M_", ""), "bold " + fntH + "px Arial", clr);
+
+        if (txt == "OFFLINE") batt = "-"; else batt = fixNull(agv[i].state["battery.info"][0], "%");
+        aX += aW;
+        aW *= 1.2;
+
+        if (i == 0) //draw header row
+        {
+            DrawRect(ctx, aX, hY, aW, aH * 0.8, brd, "white", brdClr);
+            //DrawTextCpt(ctx,aX+aW/2,hY+aH/3,"Battery","bold " + fntH*0.6 + "px Arial",YELLOW);
+            ctx.drawImage(btIcon, aX + aW / 6, hY + aH / 12, aW * 0.6, aH * 0.6);
+        }
+        batt_clr = GetBattVoltColor(batt);
+        DrawRect(ctx, aX, aY, aW, aH, brd, batt_clr, brdClr);
+        DrawTextCpt(ctx, aX + aW / 2, aY + aH / 2, batt, "bold " + Math.floor(fntH * 0.8) + "px Arial", batt_clr);
+
+        aX += aW;
+        aW *= 4.85;
+        if (i == 0) //draw header row
+        {
+            DrawRect(ctx, aX, hY, aW, aH * 0.8, brd, "white", brdClr);
+            DrawTextCpt(ctx, aX + aW / 2, hY + aH / 2.5, "Status", "bold " + fntH * 0.7 + "px Arial", YELLOW);
+        }
+        DrawRect(ctx, aX, aY, aW, aH, brd, clr, brdClr);
+        DrawTextCpt(ctx, aX + aW / 2, aY + aH / 2, txt, "bold " + fntH * 0.8 + "px Arial", clr);
+        //DrawTextCpt(ctx,aX+aW/2,aY+aH/2,txt + " [" + aDur[a] + "]","bold " + fntH*0.8 + "px Arial",clr);
+
+
+        ClearErr(agv[i].name, txt);
+
+        aY += aH;
+    }
+}
+
+function fixNull(s, sfx) {
+    if (s == undefined) return "-"; else return s + sfx;
+}
+
+function GetBattVoltColor(t) {
+    var bv = t.replace("%", "");
+    if (t == "-") return BLACK;
+    if (bv > 50) return GREEN;
+    if (bv > 29) return YELLOW;
+    return RED;
+}
+
+function GetStatusText(t) {
+    switch (t) {
+        case "extracted": return "Extracted"; break; //return "OFFLINE"; break;
+        case "lockedbyanotherapplication": return "Extracted"; break;
+        default: return "NO ALARMS"; break;
+    }
+}
+
+function GetStatusColor(t) {
+    //if (t=="OFFLINE") return BLACK;
+    if (t == "Extracted") return BLACK;
+    return GREEN;
+}
+
+function DrawRectCpt(ctx, x, y, w, h, b, fcolor, bcolor) {
+    ctx.fillStyle = bcolor;
+    ctx.fillRect(x - b - w / 2, y - b - h / 2, w + (b * 2), h + (b * 2));
+    ctx.fillStyle = fcolor;
+    ctx.fillRect(x - w / 2, y - h / 2, w, h);
+}
+
+function DrawTextCpt(ctx, x, y, txt, fnt, clr) {
+    var fcolor;
+    if (clr == YELLOW || clr == WHITE) fcolor = BLACK; else fcolor = WHITE;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = fnt;
+    ctx.fillStyle = fcolor;
+    ctx.fillText(txt, x, y);
+}
+
+function DrawRect(ctx, x, y, w, h, b, fcolor, bcolor) {
+    ctx.fillStyle = bcolor;
+    ctx.fillRect(x - b, y - b, w + (b * 2), h + (b * 2));
+    ctx.fillStyle = fcolor;
+    ctx.fillRect(x, y, w, h);
+}
+
+function DrawText(ctx, x, y, txt, fnt, fH, clr) {
+    ctx.font = fnt;
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = clr;
+    ctx.fillText(txt, x - (txt.length / 2 * (fH * 0.55)), y + (fH * 0.3));
+}
+
+/*
+function GetToken() {
+    try {
+        var url = "http://" + sysIP + ":8081/wms/monitor/session/login?username=admin&pwd=123456";
+        var xhttp = new XMLHttpRequest();
+        xhttp.overrideMimeType("application/json");
+        xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+                var json = JSON.parse(this.responseText);
+                token = json.payload.sessiontoken;
+                //document.getElementById("id01").innerHTML = this.responseText;
+            }
+        };
+        xhttp.open("GET", url, false); //false for synchronous request
+        xhttp.send();
+    }
+    catch
+    {
+        document.getElementById("errMsg").innerHTML = "Error: Cannot Connect to ANT Server!";
+    }
+}
+
+function GetVehicleData() {
+    var url = "http://" + sysIP + ":8081/wms/rest/vehicles?&sessiontoken=" + token;
+    var xhttp = new XMLHttpRequest();
+    xhttp.overrideMimeType("application/json");
+    xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+            GetAGVdata(this.responseText);
+        }
+    };
+    xhttp.open("GET", url, false); //false for synchronous request
+    xhttp.send();
+}
+*/
+
+// EH
+function ProcessDeviceData(obj, response) {
+    /*
+     *      Get the x, y coords of all devices in the project
+     *      Have to iterate over the map as well because the "coord"
+     *      field of the device object is the coords of where the device
+     *      is placed in ANT Lab, not the coords of the node which the
+     *      device is attached to.
+     * 
+     *      Also save if device is enabled and devicetype to avoid false positives
+     */
+    //var response = JSON.parse(responseText);
+    var deviceList = response.payload.devices;
+    var parent;
+    var parentCoords;
+
+    for (var ii = 0; ii < deviceList.length; ii++) {
+        parent = deviceList[ii].location.currentnode.name;
+        for (var jj = 0; jj < mapData.length; jj++) {
+            if (mapData[jj].name == parent) {
+                parentCoords = mapData[jj].coord;
+            }
+        }
+
+        deviceCoords.push({
+            //coords: deviceList[ii].location,
+            enabled: deviceList[ii].enabled,
+            parentnode: parent,
+            coord: parentCoords,
+            devtype: deviceList[ii].meta.devicetype,
+            connected: deviceList[ii].meta.state.isconnected,
+            name: deviceList[ii].meta.deviceid
+        });
+        //console.log(deviceCoords[ii]);
+    }
+}
+
+// EH
+function PreviewAlarms(alrm) {
+
+    var thisAlarm;
+    var jsonAlarm = JSON.parse(alrm);
+    for (var i = 0; i < jsonAlarm.payload.alarms.length; i++) {
+        thisAlarm = jsonAlarm.payload.alarms[i];
+        if (thisAlarm.sourceid == 'M_1') {
+            console.log(thisAlarm);
+        }
+    }
+}
+
+/*
+function GetMapData() {
+    var url = "http://" + sysIP + ":8081/wms/rest/maps/level/1/data?&sessiontoken=" + token;
+    var xhttp = new XMLHttpRequest();
+    xhttp.overrideMimeType("application/json");
+    xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+            DrawMap(this.responseText);
+        }
+    };
+    xhttp.open("GET", url, false); //false for synchronous request
+    xhttp.send();
+}
+
+// EH
+function GetAlarmData() {
+    var url = "http://" + sysIP + ":8081/wms/rest/alarms?&sessiontoken=" + token + "&dataorderby=[['sourcetype','desc'], ['sourceid', 'desc']]";
+    var xhttp = new XMLHttpRequest();
+    xhttp.overrideMimeType("application/json");
+    xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+            //PreviewAlarms(this.responseText);
+            console.log(JSON.parse(this.responseText));
+        }
+    };
+    xhttp.open("GET", url, false); //false for synchronous request
+    xhttp.send();
+}
+
+// EH
+function GetDeviceData() {
+    var url = "http://" + sysIP + ":8081/wms/rest/devices?&sessiontoken=" + token;
+    
+    var xhttp = new XMLHttpRequest();
+    xhttp.overrideMimeType("application/json");
+    xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+            ProcessDeviceData(this.responseText);
+        }
+    };
+    xhttp.open("GET", url, false); //false for synchronous request
+    xhttp.send();
+}
+*/
+
+function GetLiaisonData(fileloc) {
+    var rndCB = parseInt(Math.random() * 99999999);
+    
+    var xhttp = new XMLHttpRequest();
+    //xhttp.setRequestHeader("Content-Type", "text/xml");
+
+    xhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200 || this.status == 0) {
+            //document.getElementById("id00").innerHTML = this.responseText;
+            ProcessLiaisonData(this.responseText);
+        }
+    };
+    //xhttp.open("GET", fileloc + "?rand=" + rndCB, false);
+    xhttp.open("GET", fileloc, false);
+    xhttp.send();
+}
+
+function ProcessLiaisonData(d) {
+    var ln = d.split(";");
+    var e;
+
+    test = ">";
+
+    for (var i = 0; i < ln.length; i++) {
+        if (ln[i].substr(0, 7) == "Traffic") {
+            e = ln[i].split("~");
+            if (e[1] == "True") DrawTraffic(e[2], e[3], e[4], e[5], e[6]);
+            test += "[" + ln[i] + "]";
+        }
+    }
+
+    for (var i = 0; i < ln.length; i++) {
+        if (ln[i].substr(0, 4) == "Wise") {
+            e = ln[i].split("~");
+
+            e[0] = e[0].replace("Wise", "");
+            DrawWise(e[0], e[1], e[2], e[3]);
+        }
+    }
+    //document.getElementById("id00").innerHTML = test;
+}
+
+function DrawTraffic(c, x1, y1, x2, y2) {
+    var clr = GREEN;
+    if (c == 1) clr = YELLOW;
+    if (c == 2) clr = RED;
+
+    var p1x = (x1 * scale * sX) + (xOffset * scale * sX);
+    var p1y = (yOffset - y1) * scale * sY * .98;
+    var p2x = (x2 * scale * sX) + (xOffset * scale * sX);
+    var p2y = (yOffset - y2) * scale * sY * .98;
+
+    var w = cW / 26;
+    var h = cH / 45;
+
+    ctx.lineWidth = brd * 2;
+    ctx.strokeStyle = clr;
+    ctx.strokeRect(p1x, p1y, p2x - p1x, p2y - p1y);
+}
+
+function DrawWise(n, c, x, y) {
+    var w = cW / 26;
+    var h = cH / 45;
+    var fntH = cH / 50;
+
+    var clr = GREEN;
+    if (c == 1) clr = YELLOW;
+    if (c == 2) clr = RED;
+
+    x = (x * scale * sX) + (xOffset * scale * sX);
+    y = (yOffset - y) * scale * sY
+
+    DrawRectCpt(ctx, x, y, w, h, brd, clr, brdClr);
+    DrawTextCpt(ctx, x, y, n, "bold " + fntH + "px Arial", clr);
+}
+
+function DrawMap(obj, json) {
+    //json = JSON.parse(m);
+    //console.log(json);
+    mapData = json.payload.data[0].data.layers[1].symbols;
+    //var map = json.payload.data[0].data.alias;
+    var ly0 = json.payload.data[0].data.layers[0].lines;
+    var ly1 = json.payload.data[0].data.layers[1].lines;
+
+    //var cd = ly0[0].coord;
+    //document.getElementById("id00").innerHTML = cd[0] + "," + cd[1]+ "," + cd[2]+ "," + cd[3];
+
+    for (var i = 0; i < ly1.length; i++) {
+        cd = ly1[i].coord;
+        DrawLine((xOffset + cd[0]) * scale * sX, (yOffset - cd[1]) * scale * sY, (xOffset + cd[2]) * scale * sX, (yOffset - cd[3]) * scale * sY, path_Color);
+    }
+
+    if (navON) {
+        for (var i = 0; i < ly0.length; i++) {
+            cd = ly0[i].coord;
+            DrawLine((xOffset + cd[0]) * scale * sX, (yOffset - cd[1]) * scale * sY, (xOffset + cd[2]) * scale * sX, (yOffset - cd[3]) * scale * sY, nav_Color);
+        }
+    }
+}
+
+function DrawLine(x1, y1, x2, y2, clr) {
+    ctx.strokeStyle = clr;
+    ctx.lineWidth = cW * .002;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+}
+
+function GetAGVdata(obj, json) {
+    //var json = JSON.parse(j);
+    agv = json.payload.vehicles;
+
+    agv.sort(SortByName);
+    //console.log(agv);
+
+    var s = "";
+    for (var i = 0; i < agv.length; i++) { s += "[" + agv[i].name + "] "; }
+    //document.getElementById("id01").innerHTML = s;
+
+    var s = "";
+    for (var i = 0; i < agv.length; i++) { s += "[" + agv[i].operatingstate + "] "; }
+    //document.getElementById("id02").innerHTML = s;
+
+    var s = "";
+    for (var i = 0; i < agv.length; i++) { s += "[" + agv[i].state["battery.info"][0] + "%] "; }
+    //document.getElementById("id03").innerHTML = s;
+
+    var s = "";
+    for (var i = 0; i < agv.length; i++) { s += "[" + agv[i].action.name + "]"; }
+    if (debug) document.getElementById("id04").innerHTML = s;
+
+    var s = "";
+    for (var i = 0; i < agv.length; i++) {
+        var x = agv[i].operatingstate;
+        if (x > 0) s += "[" + agv[i].location.coord[0] + "," + agv[i].location.coord[1] + "]";
+        else s += "[?,?]";
+    }
+
+    var s = "";
+    for (var i = 0; i < agv.length; i++) { s += "[" + agv[i].state.errors + "]"; }
+    if (debug) document.getElementById("id05").innerHTML = s;
+    //document.getElementById("id06").innerHTML = j;
+}
+
+function SortByName(x, y) {
+    return ((x.name == y.name) ? 0 : ((x.name > y.name) ? 1 : -1));
+}
+
+function Invert() {
+    var imgData = ctx.getImageData(0, 0, cW, cH);
+    var pix = imgData.data;
+
+    for (var i = 0, n = pix.length; i < n; i += 4) {
+        pix[i] = 255 - pix[i]; //red
+        pix[i + 1] = 255 - pix[i + 1]; //green
+        pix[i + 2] = 255 - pix[i + 2]; //blue
+        // i+3 is alpha 
+    }
+    ctx.putImageData(imgData, 0, 0);
+}
+
+function Darken(thr) {
+    var imgData = ctx.getImageData(0, 0, cW, cH);
+    var pix = imgData.data;
+
+    for (var i = 0, n = pix.length; i < n; i += 4) {
+        if (pix[i] < thr) pix[i] = pix[i] / 2;
+        if (pix[i + 1] < thr) pix[i + 1] = pix[i + 1] / 2;
+        if (pix[i + 2] < thr) pix[i + 2] = pix[i + 2] / 2;
+        // i+3 is alpha 
+    }
+    ctx.putImageData(imgData, 0, 0);
+}  
+	
+  </script>
+</html>
