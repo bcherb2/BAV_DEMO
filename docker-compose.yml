@@ -1,0 +1,11 @@
+version: '3.4'
+
+services:
+  bavdemo:
+    image: bavdemo
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 8061:8061
+      - 8062:8062

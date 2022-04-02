@@ -1,0 +1,13 @@
+version: '3.4'
+
+services:
+  bavdemo:
+    image: bavdemo
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command: ["sh", "-c", "pip install debugpy -t /tmp && python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 -m uvicorn bav_demo:app --host 0.0.0.0 --port 8061"]
+    ports:
+      - 8061:8061
+      - 8062:8062
+      - 5678:5678
