@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="./denso.css" />
+
+    <script></script>
+    <script src="./BBxANTServer.js"></script>
+    <script src="DateFormat.js"></script>
+    <script src="jquery-1.10.2.min.js"></script>
+    <script src="MissionsLite.js"></script>
+  </head>
+
+  <body>
+    <div id="overlay" onclick="off()">
+      <div id="text">Mission Created</div>
+    </div>
+    <div id="overlay2" onclick="off()">
+      <div id="text">Failed</div>
+    </div>
+
+    <div style="padding: 20px"></div>
+
+    <div class="box-1" id="box1">
+      <div class="btn btn-one">
+        <span>Deliver 201</span>
+      </div>
+    </div>
+    <div class="box-2">
+      <div class="btn btn-one">
+        <span>Deliver 202</span>
+      </div>
+    </div>
+    <div class="box-3">
+      <div class="btn btn-one">
+        <span>Return Home</span>
+      </div>
+    </div>
+    <br />
+    <div class="styled-select-con">
+      <div class="styled-select">
+        <select class="service-area" name="service-area" id="service-area">
+          <optgroup>
+            <option selected="selected" class="service-small" id="vehicle222">
+              Select Vehicle
+            </option>
+            <option class="service-small" value="Caro">Caro</option>
+            <option class="service-small" value="Lina">Lina</option>
+            <option class="service-small" value="Batman">Batman</option>
+            <option class="service-small" value="Grogu">Grogu</option>
+            <option class="service-small" value="Fett">Fett</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+    <!-- INSERTION POINT FOR LIVE PAGE LOGGING -->
+    <p id="logSpan"></p>
+
+    <div class="div-wrapper">
+      <img src="Bastian-TAL-Logo.png" />
+    </div>
+
+    <!-- MISSION BUILDER AREA -->
+    <script>
+      var whatvehicle;
+      function GetSelectedVehicle() {
+        var whatvehicle = document.getElementById("service-area").value;
+        return whatvehicle;
+      }
+      //**********************************BUTTON 1 CLICK EVENT****************************************
+      document.getElementById("box1").addEventListener("click", async () => {
+        var whatvehicle = await GetSelectedVehicle();
+        console.log("Selected vehicle: " + whatvehicle);
+        let res = await createMission(whatvehicle, "201D", "Insertion5");
+        let res1 = await createLinkedMission(0, whatvehicle, "203D", "201D");
+        let res2 = await createLinkedMission(
+          1,
+          whatvehicle,
+          "Insertion5",
+          "203D"
+        );
+      });
+      document.getElementById("box2").addEventListener("click", () => {
+        whatvehicle = GetSelectedVehicle();
+        create2Mission(whatvehicle, "homeNode", "Station2");
+        create2Mission(whatvehicle, "Station2", "homeNode");
+      });
+      document.getElementById("box3").addEventListener("click", () => {
+        whatvehicle = GetSelectedVehicle();
+        create3Mission(whatvehicle, "homeNode", "Station1");
+        create3Mission(whatvehicle, "Station1", "Station2");
+        create3Mission(whatvehicle, "Station2", "homeNode");
+      });
+
+      /*       function on() {
+      document.getElementById("overlay").style.display = "block";
+    } 
+      function off() {
+        document.getElementById("overlay").style.display = "none";
+      } */
+    </script>
+  </body>
+</html>
